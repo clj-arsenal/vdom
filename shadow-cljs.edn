@@ -1,0 +1,7 @@
+{:deps {:aliases [:dev]}
+ 
+ :builds
+ {:dev
+  {:target :node-script
+   :output-to "target/dev.js"
+   :main test/run}}}

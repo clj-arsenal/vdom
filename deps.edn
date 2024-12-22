@@ -1,0 +1,25 @@
+{:paths ["src"]
+ :deps {me.raystubbs.clj-arsenal/check {:local/root "../check"}
+        me.raystubbs.clj-arsenal/log {:local/root "../log"}
+        me.raystubbs.clj-arsenal/burp {:local/root "../burp"}}
+
+ :aliases
+ {:build
+  {:deps {me.raystubbs.clj-arsenal/build {:local/root "../build"}}
+   :ns-default clj-arsenal.build}
+  
+  :dev
+  {:extra-paths ["dev"]
+   :extra-deps {cider/cider-nrepl {:mvn/version "0.50.0"}
+                thheller/shadow-cljs {:mvn/version "2.28.19"}}
+   :main-opts ["-m" "shadow.cljs.devtools.cli"]
+   :clj-arsenal.check/enabled true
+   :clj-arsenal.check/ns-include-re "(clj-arsenal[.]vdom([.].+)?|test)"}}
+
+ :clj-arsenal.build/meta
+ {:version [0 0 0]
+  :name me.raystubbs.clj-arsenal/burp
+  :license "The MIT License"
+  :license-url "https://opensource.org/license/mit/"
+  :pub-url "https://github.com/clj-arsenal/vdom"
+  :git-url "https://github.com/clj-arsenal/vdom.git"}}

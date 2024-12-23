@@ -104,6 +104,29 @@
         
         (expect = div (.-activeElement doc))))))
 
+(check ::keys
+  (with-doc
+    (fn [driver ^js/Document doc]
+      (vdom/render! driver (.-body doc)
+        (burp
+          ^{:key 1} [:input#i1]
+          ^{:key 2} [:input#i2]
+          [:div]
+          ^{:key 3} [:input#i3]))
+      (let [[i1 i2 d i3] (array-seq (.-childNodes (.-body doc)))]
+        (vdom/render! driver (.-body doc)
+          (burp
+            ^{:key 2} [:input#i2]
+            [:div]
+            ^{:key 3} [:input#i3]
+            ^{:key 1} [:input#i1]))
+        (let [[i2' d' i3' i1'] (array-seq (.-childNodes (.-body doc)))]
+          (expect = i1 i1')
+          (expect = i2 i2')
+          (expect = i3 i3')
+          (expect = d d'))))))
+
+
 (defn run
   []
   )

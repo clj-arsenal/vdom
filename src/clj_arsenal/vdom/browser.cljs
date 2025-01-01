@@ -94,15 +94,13 @@
       (-after-update-node
         [_ node]
         (when (= (.-nodeType ^js/Node node) 1)
-          (let [old-classes (.-cljArsenalVDomOldClasses ^js/Node node)
-                new-classes (.-cljArsenalVDomClasses ^js/Node node)]
-            (when (not= old-classes new-classes)
-              (cond
-                (empty? new-classes)
-                (.removeAttribute ^js/Node node "class")
+          (let [new-classes (.-cljArsenalVDomClasses ^js/Node node)]
+            (cond
+              (empty? new-classes)
+              (.removeAttribute ^js/Node node "class")
 
-                :else
-                (.setAttribute ^js/Node node "class" (str/join " " new-classes))))))
+              :else
+              (.setAttribute ^js/Node node "class" (str/join " " new-classes)))))
         nil)
 
       (-set-prop!

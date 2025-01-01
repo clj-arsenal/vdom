@@ -101,6 +101,14 @@
         target-layout (mapv take-node children-markup)
         focused-child (-focused-child driver node)
         focused-child-target-index (when focused-child (index-of focused-child target-layout))]
+
+    (doseq [[child-node markup] (map vector target-layout children-markup)]
+      (render-node! driver child-node markup))
+
+    (doseq [child-node-pool (vals child-node-pools)
+            unused-child-node @child-node-pool]
+      (-remove-node! driver node unused-child-node))
+
     (cond
       (some? focused-child-target-index)
       (do
@@ -114,20 +122,13 @@
           (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
             (-place-node! driver node next-child-node target-index)
             (recur rest-child-nodes (inc target-index)))))
-      
+
       :else
       (loop [child-nodes target-layout
              target-index 0]
         (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
           (-place-node! driver node next-child-node target-index)
-          (recur rest-child-nodes (inc target-index)))))
-    
-    (doseq [[child-node markup] (map vector target-layout children-markup)]
-      (render-node! driver child-node markup))
-
-    (doseq [child-node-pool (vals child-node-pools)
-            unused-child-node @child-node-pool]
-      (-remove-node! driver node unused-child-node)))
+          (recur rest-child-nodes (inc target-index))))))
   nil)
 
 (defn- render-props!

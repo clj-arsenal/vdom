@@ -10,7 +10,7 @@
    #?@(:cljd [] :clj [clojure.lang.IFn clojure.lang.IRef])))
 
 (defprotocol Driver
-  (-create-node [d burp-key data])
+  (-create-node [d burp-key parent-node data])
   (-before-update-node [d node])
   (-after-update-node [d node])
   (-set-prop! [d node k v])
@@ -94,7 +94,7 @@
                     (let [burp-key (:key burp-element)
                           node-pool (get child-node-pools burp-key)]
                       (if (or (nil? node-pool) (empty? @node-pool))
-                        (-create-node driver burp-key {})
+                        (-create-node driver burp-key node {})
                         (let [element-node (first @node-pool)]
                           (vswap! node-pool rest)
                           element-node))))

@@ -69,7 +69,7 @@
 
       Driver
       (-create-node
-        [_ burp-key data]
+        [_ burp-key parent-node data]
         (let [node-type (:operator burp-key)]
           (when-not (keyword? node-type)
             (throw (ex-info "invalid node type, must be a keyword" {:type node-type})))
@@ -77,8 +77,11 @@
           (doto
             (case node-type
               ::vdom/text (.createTextNode doc "")
-              :svg (.createElementNS doc "svg" "http://www.w3.org/2000/svg")
-              (.createElement doc (node-type-keyword->element-name node-type)))
+              :svg (.createElementNS doc "http://www.w3.org/2000/svg" "svg")
+              (.createElementNS doc
+                (or (some-> parent-node .-namespaceURI)
+                  "http://www.w3.org/1999/xhtml")
+                (node-type-keyword->element-name node-type)))
             (set-node-data! (assoc data ::vdom/key burp-key)))))
 
       (-before-update-node

@@ -4,7 +4,7 @@
    [clj-arsenal.vdom :refer [Driver] :as vdom]
    [clj-arsenal.burp :as burp]
    [clj-arsenal.log :refer [spy]]
-   [clj-arsenal.basis :refer [signal signal? sig-listen sig-unlisten]]
+   [clj-arsenal.basis :refer [signal? sig-listen sig-unlisten]]
    [clj-arsenal.basis.protocols.dispose :refer [Dispose]]))
 
 (defn node-type-keyword->element-name
@@ -158,7 +158,9 @@
 
           (keyword? k)
           (let [aborter (js/AbortController.)]
-            (.addEventListener node (name k) f #js{:capture (:capture opts) :signal (.-signal aborter)})
+            (.addEventListener node (name k) f
+              #js{:capture (:capture opts)
+                  :signal (.-signal aborter)})
             #(.abort aborter))
 
           :else

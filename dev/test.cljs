@@ -6,6 +6,7 @@
    [clj-arsenal.burp :refer [burp $]]
    [clj-arsenal.basis.protocols.chain :refer [chainable]]
    [clj-arsenal.check :refer [check expect]]
+   [clj-arsenal.action :refer [act]]
    [clj-arsenal.log :refer [spy]]))
 
 (comment
@@ -98,10 +99,10 @@
             div (.querySelector doc "div")]
         (switch-focus! nil input)
         (expect = input (.-activeElement doc))
-        
+
         (vdom/render! driver (.-body doc)
           (burp [:div {:tabIndex 0}]))
-        
+
         (expect = div (.-activeElement doc))))))
 
 (check ::keys
@@ -125,6 +126,26 @@
           (expect = i2 i2')
           (expect = i3 i3')
           (expect = d d'))))))
+
+;; https://github.com/capricorn86/happy-dom/issues/1661
+#_(check ::action-listener
+  (with-doc
+    (fn [driver ^js/Document doc]
+      (let [!action (atom nil)]
+        (vdom/render! driver (.-body doc)
+          (burp
+            [:button
+             {(on :click) (act [:foo 1] [:bar 2])}
+             "Click Me!"]))
+        (.addEventListener (.-body doc) "action"
+          (fn [^js/Event event]
+            (spy event)
+            (reset! !action (.-action event))))
+
+        (let [btn (.querySelector doc "button")]
+          (expect some? btn)
+          (.dispatchEvent btn (js/Event. "click"))
+          (expect = @!action (act [:foo 1] [:bar 2])))))))
 
 
 (defn run

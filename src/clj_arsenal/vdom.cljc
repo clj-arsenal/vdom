@@ -1,13 +1,12 @@
 (ns clj-arsenal.vdom
   (:require
-   [clj-arsenal.basis.protocols.dispose :refer [Dispose dispose!]]
-   [clj-arsenal.basis :refer [sig-listen sig-unlisten]]
+   [clj-arsenal.basis.protocols.dispose :refer [dispose!]]
    [clj-arsenal.basis.once :refer [once]]
    [clj-arsenal.burp :as burp]
    [clj-arsenal.log :refer [spy]]
    #?(:cljd [cljd.core :refer [IFn IWatchable]]))
   (:import
-   #?@(:cljd [] :clj [clojure.lang.IFn clojure.lang.IRef])))
+   #?@(:cljd [] :clj [clojure.lang.IRef])))
 
 (defprotocol Driver
   (-create-node [d burp-key parent-node data])
@@ -36,13 +35,37 @@
       x
       (throw (ex-info "value does not satsify IWatchable or DeriveWatchable" {:value x})))))
 
+#?(:cljs
+   (def ActionEvent
+     (js* "class ActionEvent extends Event {
+       constructor(type, action, options) {
+         super(type, options);
+         this.action = action;
+       } 
+     }")))
+
 (extend-protocol DeriveListener
   #?(:cljs default :clj Object)
   (-derive-listener
-    [x _]
+    [x node]
     (if (ifn? x)
       x
-      (throw (ex-info "value does not satisfy IFn or DeriveListener" {:value x})))))
+      (or
+        #?(:cljs
+           (when-some [action? (resolve 'clj-arsenal.action/action?)]
+             (when (and (action? x) (fn? (.-dispatchEvent node)))
+               (fn [^js/Event event]
+                 (let [headers (:headers x)]
+                   (when-not (:no-prevent-default headers)
+                     (.preventDefault event))
+                   (when-not (:no-stop-propagation headers)
+                     (.stopPropagation event)))
+                 (.dispatchEvent ^js/EventTarget node
+                   (new ActionEvent "action" x
+                     #js{:cancelable true
+                         :bubbles true
+                         :composed true}))))))
+        (throw (ex-info "value does not satisfy IFn or DeriveListener" {:value x}))))))
 
 (defrecord BindValue [watchable-source opts])
 (defrecord ListenKey [k opts])
@@ -82,6 +105,7 @@
       (if (= next-val x)
         (reduced i)
         (inc i)))
+    0
     coll))
 
 (defn- render-body!
@@ -98,9 +122,7 @@
                         (let [element-node (first @node-pool)]
                           (vswap! node-pool rest)
                           element-node))))
-        target-layout (mapv take-node children-markup)
-        focused-child (-focused-child driver node)
-        focused-child-target-index (when focused-child (index-of focused-child target-layout))]
+        target-layout (mapv take-node children-markup)]
 
     (doseq [[child-node markup] (map vector target-layout children-markup)]
       (render-node! driver child-node markup))
@@ -109,26 +131,28 @@
             unused-child-node @child-node-pool]
       (-remove-node! driver node unused-child-node))
 
-    (cond
-      (some? focused-child-target-index)
-      (do
-        (loop [child-nodes (subvec target-layout 0 focused-child-target-index)
+    (let [focused-child (-focused-child driver node)
+          focused-child-target-index (when focused-child (index-of focused-child target-layout))]
+      (cond
+        (some? focused-child-target-index)
+        (do
+          (loop [child-nodes (subvec target-layout 0 focused-child-target-index)
+                 target-index 0]
+            (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
+              (-place-node! driver node next-child-node target-index)
+              (recur rest-child-nodes (inc target-index))))
+          (loop [child-nodes (subvec target-layout (inc focused-child-target-index))
+                 target-index (inc focused-child-target-index)]
+            (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
+              (-place-node! driver node next-child-node target-index)
+              (recur rest-child-nodes (inc target-index)))))
+
+        :else
+        (loop [child-nodes target-layout
                target-index 0]
           (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
             (-place-node! driver node next-child-node target-index)
-            (recur rest-child-nodes (inc target-index))))
-        (loop [child-nodes (subvec target-layout (inc focused-child-target-index))
-               target-index (inc focused-child-target-index)]
-          (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
-            (-place-node! driver node next-child-node target-index)
-            (recur rest-child-nodes (inc target-index)))))
-
-      :else
-      (loop [child-nodes target-layout
-             target-index 0]
-        (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
-          (-place-node! driver node next-child-node target-index)
-          (recur rest-child-nodes (inc target-index))))))
+            (recur rest-child-nodes (inc target-index)))))))
   nil)
 
 (defn- render-props!

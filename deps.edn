@@ -1,11 +1,12 @@
 {:paths ["src"]
- :deps {me.raystubbs.clj-arsenal/check {:local/root "../check"}
-        me.raystubbs.clj-arsenal/log {:local/root "../log"}
-        me.raystubbs.clj-arsenal/burp {:local/root "../burp"}}
+ :deps {me.raystubbs.clj-arsenal/basis {:mvn/version "0.0.1"}
+        me.raystubbs.clj-arsenal/check {:mvn/version "0.0.2"}
+        me.raystubbs.clj-arsenal/log {:mvn/version "0.0.1"}
+        me.raystubbs.clj-arsenal/burp {:mvn/version "0.0.1"}}
 
  :aliases
  {:build
-  {:deps {me.raystubbs.clj-arsenal/build {:local/root "../build"}}
+  {:deps {me.raystubbs.clj-arsenal/build {:mvn/version "0.0.5"}}
    :ns-default clj-arsenal.build}
   
   :dev
@@ -18,8 +19,8 @@
    :clj-arsenal.check/ns-include-re "(clj-arsenal[.]vdom([.].+)?|test)"}}
 
  :clj-arsenal.build/meta
- {:version [0 0 0]
-  :name me.raystubbs.clj-arsenal/burp
+ {:version "0.0.0"
+  :name me.raystubbs.clj-arsenal/vdom
   :license "The MIT License"
   :license-url "https://opensource.org/license/mit/"
   :pub-url "https://github.com/clj-arsenal/vdom"

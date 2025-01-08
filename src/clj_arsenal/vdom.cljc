@@ -27,6 +27,9 @@
 (defprotocol DeriveListener
   (-derive-listener [x node]))
 
+(defprotocol EventData
+  (-event-data [event]))
+
 (extend-protocol DeriveWatchable
   #?(:cljs default :clj Object)
   (-derive-watchable
@@ -38,9 +41,10 @@
 #?(:cljs
    (def ActionEvent
      (js* "class ActionEvent extends Event {
-       constructor(type, action, options) {
-         super(type, options);
+       constructor(type, action, context) {
+         super(type, {bubbles: true, composed: true, cancelable: true});
          this.action = action;
+         this.context = context;
        } 
      }")))
 
@@ -54,17 +58,27 @@
         #?(:cljs
            (when-some [action? (resolve 'clj-arsenal.action/action?)]
              (when (and (action? x) (fn? (.-dispatchEvent node)))
-               (fn [^js/Event event]
-                 (let [headers (:headers x)]
-                   (when-not (:no-prevent-default headers)
-                     (.preventDefault event))
-                   (when-not (:no-stop-propagation headers)
-                     (.stopPropagation event)))
-                 (.dispatchEvent ^js/EventTarget node
-                   (new ActionEvent "action" x
-                     #js{:cancelable true
-                         :bubbles true
-                         :composed true}))))))
+               (fn [^js event]
+                 (try
+                   (let [headers (:headers x)]
+                     (when (instance? js/Event event)
+                       (when-not (:no-prevent-default headers)
+                         (.preventDefault event))
+                       (when-not (:no-stop-propagation headers)
+                         (.stopPropagation event))))
+                   (let [root (.getRootNode node)
+                         host (.-host root)
+                         target (.-target event)
+                         data (when (satisfies? EventData event) (-event-data event))]
+                     (.dispatchEvent ^js/EventTarget node
+                       (new ActionEvent "action" x
+                         {::event.target target
+                          ::event.data data
+                          ::node node
+                          ::root root
+                          ::host host})))
+                   (catch :default ex
+                     (print ex)))))))
         (throw (ex-info "value does not satisfy IFn or DeriveListener" {:value x}))))))
 
 (defrecord BindValue [watchable-source opts])

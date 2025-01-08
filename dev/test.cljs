@@ -4,7 +4,7 @@
    [clj-arsenal.vdom :refer [bind on] :as vdom]
    [clj-arsenal.vdom.browser :refer [switch-focus!] :as vdom-browser]
    [clj-arsenal.burp :refer [burp $]]
-   [clj-arsenal.basis.protocols.chain :refer [chainable]]
+   [clj-arsenal.basis.protocols.chain :refer [chainable chain]]
    [clj-arsenal.check :refer [check expect]]
    [clj-arsenal.action :refer [act]]
    [clj-arsenal.log :refer [spy]]))
@@ -19,12 +19,13 @@
     (fn [continue]
       (try
         (let [win (happy-dom/Window.)]
-          (f (vdom-browser/driver (.-document win)) (.-document win))
-          (-> win .-happyDOM .waitUntilComplete
-            (.then
-              (fn []
-                (-> win .-happyDOM .close)
-                (continue nil)))))
+          (chain (f (vdom-browser/driver (.-document win)) (.-document win))
+            (fn [_]
+              (-> win .-happyDOM .waitUntilComplete
+                (.then
+                  (fn []
+                    (-> win .-happyDOM .close)
+                    (continue nil)))))))
         (catch :default ex
           (continue ex))))))
 
@@ -38,18 +39,18 @@
       (expect = (-> doc .-body .-textContent) "Hello, World!")
       (expect = (-> doc .-body .-id) "my-body")
       (expect true? (-> doc .-body .-classList (.contains "my-class")))
-      
+
       (vdom/render! driver (.-body doc)
         ($ :body#other-id.other-class "Hello, Other!"))
-      
+
       (expect = (-> doc .-body .-foo) nil)
       (expect = (-> doc .-body .-textContent) "Hello, Other!")
       (expect = (-> doc .-body .-id) "other-id")
       (expect = (-> doc .-body .-className) "other-class")
-      
+
       (vdom/render! driver (.-body doc)
         ($ :body.class-1.class-2 {:class [:class-3 [:class-4]]}))
-      
+
       (expect = (-> doc .-body .-textContent) "")
       (expect true? (-> doc .-body .-classList (.contains "class-1")))
       (expect true? (-> doc .-body .-classList (.contains "class-2")))
@@ -68,7 +69,7 @@
         (let [btn (.querySelector doc "button")]
           (expect some? btn)
           (dotimes [_ 7]
-            (.dispatchEvent btn (js/Event. "click")))
+            (.click btn))
           (expect = @!click-count 7))))))
 
 (check ::binding
@@ -129,22 +130,28 @@
 
 ;; https://github.com/capricorn86/happy-dom/issues/1661
 #_(check ::action-listener
-  (with-doc
-    (fn [driver ^js/Document doc]
-      (let [!action (atom nil)]
+  (let [!action (atom nil)]
+    (with-doc
+      (fn [driver ^js/Document doc]
         (vdom/render! driver (.-body doc)
           (burp
-            [:button
-             {(on :click) (act [:foo 1] [:bar 2])}
-             "Click Me!"]))
-        (.addEventListener (.-body doc) "action"
-          (fn [^js/Event event]
-            (spy event)
-            (reset! !action (.-action event))))
+            [:div
+             [:button#b
+              {(on :click) (act [:foo 1] [:bar 2])}
+              "Click Me!"]]))
 
-        (let [btn (.querySelector doc "button")]
+        (let [div (.querySelector doc "div")
+              btn (.querySelector doc "button")]
+          (.addEventListener div "action"
+            (fn [^js/Event event]
+              (spy event)
+              (spy (.-bubbles event))
+              (reset! !action (.-action event))))
+          (.addEventListener div "click"
+            (fn [event]
+              (spy event)))
           (expect some? btn)
-          (.dispatchEvent btn (js/Event. "click"))
+          (.click btn)
           (expect = @!action (act [:foo 1] [:bar 2])))))))
 
 

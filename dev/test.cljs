@@ -128,9 +128,8 @@
           (expect = i3 i3')
           (expect = d d'))))))
 
-;; https://github.com/capricorn86/happy-dom/issues/1661
-#_(check ::action-listener
-  (let [!action (atom nil)]
+(check ::action-listener
+  (let [!detail (atom nil)]
     (with-doc
       (fn [driver ^js/Document doc]
         (vdom/render! driver (.-body doc)
@@ -142,17 +141,15 @@
 
         (let [div (.querySelector doc "div")
               btn (.querySelector doc "button")]
-          (.addEventListener div "action"
+          (.addEventListener div "clj-arsenal.action"
             (fn [^js/Event event]
-              (spy event)
-              (spy (.-bubbles event))
-              (reset! !action (.-action event))))
-          (.addEventListener div "click"
-            (fn [event]
-              (spy event)))
+              (reset! !detail (.-detail event))))
+
           (expect some? btn)
+
           (.click btn)
-          (expect = @!action (act [:foo 1] [:bar 2])))))))
+          (expect = (:action @!detail) (act [:foo 1] [:bar 2]))
+          (expect = "click" (.-type ^js/Event (:source-event @!detail))))))))
 
 
 (defn run

@@ -49,6 +49,25 @@
       :else
       (some->> to .-parentNode (try-pass-focus! from)))))
 
+(defn- action-event-listener-fn
+  [^js/Node node action]
+  (fn [^js/Event event]
+    (when-some [CustomEvent (some-> node .-ownerDocument .-defaultView .-CustomEvent)]
+      (let [headers (:headers action)
+            action-event (new CustomEvent
+                           "clj-arsenal.action"
+                           #js{:bubbles true
+                               :composed true
+                               :cancelable true
+                               :detail {:action action :source-event event}})]
+
+        (when-not (:no-prevent-default headers)
+          (.preventDefault event))
+        (when-not (:no-stop-propagation headers)
+          (.stopPropagation event))
+
+        (.dispatchEvent node action-event)))))
+
 (defn driver
   [^js/Document doc]
   (let [!parent-node->focused-child (volatile! {})
@@ -149,22 +168,37 @@
             (aset node (name k) v))))
 
       (-listen!
-        [_ node k f opts]
-        (cond
-          (signal? k)
-          (let [listen-key (gensym)]
-            (sig-listen k listen-key #(f #js{:target node :signal k}))
-            #(sig-unlisten k listen-key))
+        [_ node k listener opts]
+        (let [f (cond
+                  (fn? listener)
+                  listener
 
-          (keyword? k)
-          (let [aborter (js/AbortController.)]
-            (.addEventListener node (name k) f
-              #js{:capture (:capture opts)
-                  :signal (.-signal aborter)})
-            #(.abort aborter))
+                  (ifn? listener)
+                  #(listener %)
 
-          :else
-          (throw (ex-info "invalid listener key, must be keyword or signal" {:k k}))))
+                  :else
+                  (or
+                    (when-some [action? (resolve 'clj-arsenal.action/action?)]
+                      (when (action? listener)
+                        (action-event-listener-fn node listener)))
+                    (throw
+                      (ex-info "invalid listener value, must be a function or an action"
+                        {:listener listener}))))]
+          (cond
+            (signal? k)
+            (let [listen-key (gensym)]
+              (sig-listen k listen-key #(f #js{:target node :signal k}))
+              #(sig-unlisten k listen-key))
+
+            (keyword? k)
+            (let [aborter (js/AbortController.)]
+              (.addEventListener node (name k) f
+                #js{:capture (:capture opts)
+                    :signal (.-signal aborter)})
+              #(.abort aborter))
+
+            :else
+            (throw (ex-info "invalid listener key, must be keyword or signal" {:k k})))))
 
       (-place-node!
         [_ parent-node child-node index]

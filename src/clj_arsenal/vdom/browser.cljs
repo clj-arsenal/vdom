@@ -178,9 +178,8 @@
 
                   :else
                   (or
-                    (when-some [action? (resolve 'clj-arsenal.action/action?)]
-                      (when (action? listener)
-                        (action-event-listener-fn node listener)))
+                    (when (vdom/action? listener)
+                      (action-event-listener-fn node listener))
                     (throw
                       (ex-info "invalid listener value, must be a function or an action"
                         {:listener listener}))))]

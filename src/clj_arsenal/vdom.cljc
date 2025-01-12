@@ -35,32 +35,27 @@
       x
       (throw (ex-info "value does not satsify IWatchable or DeriveWatchable" {:value x})))))
 
-#?(:cljs
-   (def ActionEvent
-     (js* "class ActionEvent extends Event {
-       constructor(type, action, context) {
-         super(type, {bubbles: true, composed: true, cancelable: true});
-         this.action = action;
-         this.context = context;
-       } 
-     }")))
+(def ^:no-doc action?
+  ; use ns-publics instead of resolve to avoid compiler warning
+  (let [delayed-is-action-fn
+        (delay
+          (or (get 'action? (ns-publics 'clj-arsenal.action))
+            (constantly false)))]
+    (fn action? [x]
+      (@delayed-is-action-fn x))))
 
 (extend-protocol DeriveListener
   #?(:cljs default :clj Object)
   (-derive-listener
     [x node]
-    (if (ifn? x)
+    (if (or (ifn? x) (action? x))
       x
-      (or
-        (when-some [action? (resolve 'clj-arsenal.action/action?)]
-          (when (action? x)
-            x))
-        (throw
-          (ex-info "value does not satisfy IFn or DeriveListener, and is not an action"
-            {:value x}))))))
+      (throw
+        (ex-info "value does not satisfy IFn or DeriveListener, and is not an action"
+          {:value x})))))
 
-(defrecord BindValue [watchable-source opts])
-(defrecord ListenKey [k opts])
+(defrecord ^:private BindValue [watchable-source opts])
+(defrecord ^:private ListenKey [k opts])
 
 (defn bind
   [watchable-source & {:as opts}]

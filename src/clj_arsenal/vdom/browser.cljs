@@ -204,6 +204,7 @@
             (let [aborter (js/AbortController.)]
               (.addEventListener node (name k) f
                 #js{:capture (:capture opts)
+                    :passive (if (boolean? (:passive opts)) (:passive opts) (not (vdom/action? listener)))
                     :signal (.-signal aborter)})
               #(.abort aborter))
 

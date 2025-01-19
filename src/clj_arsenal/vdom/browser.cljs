@@ -68,6 +68,11 @@
 
         (.dispatchEvent node action-event)))))
 
+(defn- class-props
+  [^js/Node node]
+  (select-keys (::vdom/props (.-cljArsenalVDomNodeData ^js/Node node))
+    [::burp/classes :class]))
+
 (defn driver
   [^js/Document doc]
   (let [!parent-node->focused-child (volatile! {})
@@ -104,22 +109,31 @@
             (set-node-data! (assoc data ::vdom/key burp-key)))))
 
       (-before-update-node
-        [_ node]
+        [driver node]
         (when (= (.-nodeType ^js/Node node) 1)
-          (set! (.-cljArsenalVDomOldClasses ^js/Node node) (.-cljArsenalVDomClasses ^js/Node node))
-          (set! (.-cljArsenalVDomClasses ^js/Node node) #{}))
+          (set! (.-cljArsenalVDomOldClassProps ^js/Node node) (class-props node)))
         nil)
 
       (-after-update-node
         [_ node]
         (when (= (.-nodeType ^js/Node node) 1)
-          (let [new-classes (.-cljArsenalVDomClasses ^js/Node node)]
-            (cond
-              (empty? new-classes)
-              (.removeAttribute ^js/Node node "class")
+          (let [new-class-props (class-props node)
+                old-class-props (.-cljArsenalVDomOldClassProps ^js/Node node)]
+            (when (not= new-class-props old-class-props)
+              (let [new-class-set
+                    (into #{}
+                      (comp
+                        (mapcat #(cond-> % (coll? %) (-> seq flatten))) 
+                        (map name)
+                        (remove str/blank?)
+                        (mapcat #(str/split % #"\s+")))
+                      (vals new-class-props))]
+                (cond
+                  (empty? new-class-set)
+                  (.removeAttribute ^js/Node node "class")
 
-              :else
-              (.setAttribute ^js/Node node "class" (str/join " " new-classes)))))
+                  :else
+                  (.setAttribute ^js/Node node "class" (str/join " " new-class-set)))))))
         nil)
 
       (-set-prop!
@@ -133,10 +147,7 @@
           :else
           (case k
             ::vdom/value (set! (.-nodeValue ^js/Node node) v)
-            (:class ::burp/classes) (set! (.-cljArsenalVDomClasses ^js/Node node)
-                                      (into (.-cljArsenalVDomClasses ^js/Node node)
-                                        (comp (map name) (remove str/blank?))
-                                        (if (coll? v) (flatten (seq v)) (str/split (str v) #"\s+"))))
+            (:class ::burp/classes) nil
             ::burp/id (set! (.-id node) (some-> v str))
             :style (let [old-v (-> ^js/Node node .-cljArsenalVDomNodeData ::vdom/props :style)
                          style-obj (.-style ^js/Node node)]

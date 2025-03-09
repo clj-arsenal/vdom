@@ -128,11 +128,12 @@
             (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
               (-place-node! driver node next-child-node target-index)
               (recur rest-child-nodes (inc target-index))))
-          (loop [child-nodes (subvec target-layout (inc focused-child-target-index))
-                 target-index (inc focused-child-target-index)]
-            (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
-              (-place-node! driver node next-child-node target-index)
-              (recur rest-child-nodes (inc target-index)))))
+          (when (< focused-child-target-index (count target-layout))
+            (loop [child-nodes (subvec target-layout (inc focused-child-target-index))
+                   target-index (inc focused-child-target-index)]
+              (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
+                (-place-node! driver node next-child-node target-index)
+                (recur rest-child-nodes (inc target-index))))))
 
         :else
         (loop [child-nodes target-layout

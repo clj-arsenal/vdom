@@ -11,7 +11,7 @@
   [kw]
   (->
     (if-some [ns' (namespace kw)]
-      (str ns' "." (name kw))
+      (str ns' "-" (name kw))
       (name kw))
     (str/replace #"[^A-Za-z0-9._-]+" munge)
     str/lower-case))

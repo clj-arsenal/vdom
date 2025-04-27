@@ -4,7 +4,7 @@
    [clj-arsenal.vdom :refer [Driver] :as vdom]
    [clj-arsenal.burp :as burp]
    [clj-arsenal.log :refer [spy]]
-   [clj-arsenal.basis :refer [signal? sig-listen sig-unlisten]]
+   [clj-arsenal.basis :as b]
    [clj-arsenal.basis.protocols.dispose :refer [Dispose]]))
 
 (defn node-type-keyword->element-name
@@ -195,10 +195,10 @@
                       (ex-info "invalid listener value, must be a function or an action"
                         {:listener listener}))))]
           (cond
-            (signal? k)
+            (b/signal? k)
             (let [listen-key (gensym)]
-              (sig-listen k listen-key #(f #js{:target node :signal k}))
-              #(sig-unlisten k listen-key))
+              (b/notifier-listen k listen-key #(f #js{:target node :signal k}))
+              #(b/notifier-unlisten k listen-key))
 
             (keyword? k)
             (let [aborter (js/AbortController.)]

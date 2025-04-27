@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "happy-dom": "^17.4.4",
+    "shadow-cljs": "^3.0.3",
+    "ws": "^8.18.1"
+  }
+}

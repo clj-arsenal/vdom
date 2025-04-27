@@ -1,6 +1,6 @@
 (ns clj-arsenal.vdom
   (:require
-   [clj-arsenal.basis.protocols.dispose :refer [dispose!]]
+   [clj-arsenal.basis :refer [dispose!]]
    [clj-arsenal.basis.once :refer [once]]
    [clj-arsenal.burp :as burp]
    [clj-arsenal.log :refer [spy]]
@@ -39,7 +39,7 @@
   ; use ns-publics instead of resolve to avoid compiler warning
   (let [delayed-is-action-fn
         (delay
-          (or (get 'action? (ns-publics 'clj-arsenal.action))
+          (or (get (ns-publics 'clj-arsenal.action) 'action?)
             (constantly false)))]
     (fn action? [x]
       (@delayed-is-action-fn x))))

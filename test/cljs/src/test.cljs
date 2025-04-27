@@ -5,13 +5,8 @@
    [clj-arsenal.vdom.browser :refer [switch-focus!] :as vdom-browser]
    [clj-arsenal.burp :refer [burp $]]
    [clj-arsenal.basis :refer [chainable chain]]
-   [clj-arsenal.check :refer [check expect]]
-   [clj-arsenal.action :refer [act]]
-   [clj-arsenal.log :refer [spy]]))
-
-(comment
-  (require 'shadow.cljs.devtools.api)
-  (shadow.cljs.devtools.api/repl :dev))
+   [clj-arsenal.check :refer [check expect] :as check]
+   [clj-arsenal.action :refer [act]]))
 
 (defn with-doc
   [f]
@@ -151,7 +146,6 @@
           (expect = (:action @!detail) (act [:foo 1] [:bar 2]))
           (expect = "click" (.-type ^js/Event (:source-event @!detail))))))))
 
-
 (defn run
   []
-  )
+  (check/report-all-checks-and-exit!))

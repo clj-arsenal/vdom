@@ -1,8 +1,11 @@
-{:paths ["src"]
- :deps {me.raystubbs.clj-arsenal/basis {:mvn/version "0.0.2"}
-        me.raystubbs.clj-arsenal/check {:mvn/version "0.0.2"}
-        me.raystubbs.clj-arsenal/log {:mvn/version "0.0.1"}
-        me.raystubbs.clj-arsenal/burp {:mvn/version "0.0.1"}}
+{:paths
+ ["src"]
+
+ :deps
+ {me.raystubbs.clj-arsenal/basis {:mvn/version "0.0.13"}
+  me.raystubbs.clj-arsenal/check {:mvn/version "0.0.6"}
+  me.raystubbs.clj-arsenal/log {:mvn/version "0.0.2"}
+  me.raystubbs.clj-arsenal/burp {:mvn/version "0.0.1"}}
 
  :aliases
  {:build
@@ -11,9 +14,11 @@
   
   :dev
   {:extra-paths ["dev"]
-   :extra-deps {cider/cider-nrepl {:mvn/version "0.50.0"}
-                thheller/shadow-cljs {:mvn/version "2.28.19"}
-                me.raystubbs.clj-arsenal/action {:local/root "../action"}}
+
+   :extra-deps
+   {thheller/shadow-cljs
+    {:mvn/version "2.28.19"}}
+
    :main-opts ["-m" "shadow.cljs.devtools.cli"]
    :clj-arsenal.check/enabled true
    :clj-arsenal.check/ns-include-re "(clj-arsenal[.]vdom([.].+)?|test)"}}

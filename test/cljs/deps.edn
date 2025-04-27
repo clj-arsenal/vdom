@@ -1,0 +1,24 @@
+{:paths
+ ["src"]
+
+ :deps
+ {me.raystubbs.clj-arsenal/vdom
+  {:local/root "../.."}
+
+  me.raystubbs.clj-arsenal/vdom-test
+  {:local/root ".."}
+  
+  me.raystubbs.clj-arsenal/action
+  {:mvn/version "0.0.12"}}
+
+ :aliases
+ {:cljs
+  {:extra-deps
+   {cider/cider-nrepl {:mvn/version "0.50.0"}
+    thheller/shadow-cljs {:mvn/version "2.28.19"}}
+
+   :main-opts
+   ["-m" "shadow.cljs.devtools.cli"]
+
+   :clj-arsenal.check/enabled true
+   :clj-arsenal.check/ns-include-re "clj-arsenal[.]action([.].+)?"}}}

@@ -21,4 +21,4 @@
    ["-m" "shadow.cljs.devtools.cli"]
 
    :clj-arsenal.check/enabled true
-   :clj-arsenal.check/ns-include-re "clj-arsenal[.]action([.].+)?"}}}
+   :clj-arsenal.check/ns-include-re "clj-arsenal[.]vdom([.].+)?"}}}

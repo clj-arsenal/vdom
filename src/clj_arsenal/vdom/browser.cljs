@@ -94,14 +94,26 @@
       Driver
       (-create-node
         [_ burp-key parent-node data]
-        (let [node-type (:operator burp-key)]
+        (let
+          [node-type (:operator burp-key)]
           (when-not (keyword? node-type)
             (throw (ex-info "invalid node type, must be a keyword" {:type node-type})))
 
           (doto
             (case node-type
-              ::vdom/text (.createTextNode doc "")
-              :svg (.createElementNS doc "http://www.w3.org/2000/svg" "svg")
+              ::vdom/text
+              (.createTextNode doc "")
+
+              ::vdom/opaque
+              (let
+                [node (.createElement doc "div")]
+                (set! (.. node -style -display) "contents")
+                node)
+              
+
+              :svg
+              (.createElementNS doc "http://www.w3.org/2000/svg" "svg")
+
               (.createElementNS doc
                 (or (some-> parent-node .-namespaceURI)
                   "http://www.w3.org/1999/xhtml")
@@ -128,7 +140,7 @@
                         (remove str/blank?)
                         (mapcat #(str/split % #"\s+")))
                       (vals new-class-props))]
-                (cond
+              (cond
                   (empty? new-class-set)
                   (.removeAttribute ^js/Node node "class")
 
@@ -146,36 +158,45 @@
 
           :else
           (case k
-            ::vdom/value (set! (.-nodeValue ^js/Node node) v)
-            (:class ::burp/classes) nil
-            ::burp/id (set! (.-id node) (some-> v str))
-            :style (let [old-v (-> ^js/Node node .-cljArsenalVDomNodeData ::vdom/props :style)
-                         style-obj (.-style ^js/Node node)]
-                     (cond
-                       (and (map? v) (map? old-v))
-                       (do
-                         (doseq [[style-k style-v] v :when (not= style-v (get old-v style-k))]
-                           (if (nil? style-v)
-                             (.removeProperty style-obj (name style-k))
-                             (.setProperty style-obj
-                               (name style-k)
-                               (if (keyword? style-v) (name style-v) (str style-v)))))
-                         (doseq [old-style-k (keys old-v) :when (not (contains? v old-style-k))]
-                           (.removeProperty style-obj (name old-style-k))))
+            ::vdom/value
+            (set! (.-nodeValue ^js/Node node) v)
 
-                       (map? v)
-                       (do
-                         (set! (.-cssText style-obj) "")
-                         (doseq [[style-k style-v] v :when (some? v)]
-                           (.setProperty style-obj
-                             (name style-k)
-                             (if (keyword? style-v) (name style-v) (str style-v)))))
+            (:class ::burp/classes)
+            nil
 
-                       (nil? v)
-                       (.removeAttribute ^js/Node node "style")
+            ::burp/id
+            (set! (.-id node) (some-> v str))
 
-                       :else
-                       (set! (.-cssText style-obj) (str v))))
+            :style
+            (let
+              [old-v (-> ^js/Node node .-cljArsenalVDomNodeData ::vdom/props :style)
+               style-obj (.-style ^js/Node node)]
+              (cond
+                (and (map? v) (map? old-v))
+                (do
+                  (doseq [[style-k style-v] v :when (not= style-v (get old-v style-k))]
+                    (if (nil? style-v)
+                      (.removeProperty style-obj (name style-k))
+                      (.setProperty style-obj
+                                    (name style-k)
+                                    (if (keyword? style-v) (name style-v) (str style-v)))))
+                  (doseq [old-style-k (keys old-v) :when (not (contains? v old-style-k))]
+                    (.removeProperty style-obj (name old-style-k))))
+
+                (map? v)
+                (do
+                  (set! (.-cssText style-obj) "")
+                  (doseq [[style-k style-v] v :when (some? v)]
+                    (.setProperty style-obj
+                                  (name style-k)
+                                  (if (keyword? style-v) (name style-v) (str style-v)))))
+
+                (nil? v)
+                (.removeAttribute ^js/Node node "style")
+
+                :else
+                (set! (.-cssText style-obj) (str v))))
+
             (aset node (name k) v))))
 
       (-listen!
@@ -213,17 +234,32 @@
 
       (-place-node!
         [_ parent-node child-node index]
-        (let [current-child-at-index (.item (.-childNodes ^js/Node parent-node) index)]
+        (let
+          [current-child-at-index (.item (.-childNodes ^js/Node parent-node) index)]
           (when-not (= child-node current-child-at-index)
             (if (nil? current-child-at-index)
               (.appendChild ^js/Node parent-node child-node)
-              (.insertBefore ^js/Node parent-node child-node current-child-at-index)))))
+              (.insertBefore ^js/Node parent-node child-node current-child-at-index)))
+          (when
+            (and
+              (=
+               ::vdom/opaque
+               (get-in (.-cljArsenalVDomNodeData ^js/Node child-node) [::vdom/key :operator]))
+              (not (.-isConnected child-node)))
+            (vdom/-attach (.-controller ^js/Node child-node) child-node))
+          nil))
 
       (-remove-node!
         [_ parent-node child-node]
         (when (= (get @!parent-node->focused-child parent-node) child-node)
           (try-pass-focus! (some-> child-node .getRootNode .-activeElement) parent-node))
-        (.removeChild ^js/Node parent-node child-node))
+        (when
+          (=
+           ::vdom/opaque
+           (get-in (.-cljArsenalVDomNodeData ^js/Node child-node) [::vdom/key :operator]))
+          (vdom/-detach (.-controller ^js/Node child-node) child-node))
+        (.removeChild ^js/Node parent-node child-node)
+        nil)
 
       (-node-data
         [_ node]

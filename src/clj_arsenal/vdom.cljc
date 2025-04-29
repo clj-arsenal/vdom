@@ -75,15 +75,13 @@
     
     (burp/element? markup-value)
     markup-value
-    
+
     :else
     (throw (ex-info "invalid markup value; expected string, seq, or burp element" {:value markup-value}))))
 
 (defn render!
   [driver target markup]
-  (if (seq? markup)
-    (render-body! driver target markup)
-    (render-node! driver target (markup-value->burp markup))))
+  (render-body! driver target (cond-> markup (not (seq? markup)) list)))
 
 (defn- index-of
   [x coll]
@@ -97,48 +95,60 @@
 
 (defn- render-body!
   [driver node children-markup]
-  (let [children-markup (map markup-value->burp children-markup)
-        source-layout (vec (-node-children driver node))
-        key->child-nodes (group-by #(::key (-node-data driver %)) source-layout)
-        child-node-pools (update-vals key->child-nodes (once #(volatile! (seq %))))
-        take-node (fn take-node [burp-element]
-                    (let [burp-key (:key burp-element)
-                          node-pool (get child-node-pools burp-key)]
-                      (if (or (nil? node-pool) (empty? @node-pool))
-                        (-create-node driver burp-key node {})
-                        (let [element-node (first @node-pool)]
-                          (vswap! node-pool rest)
-                          element-node))))
-        target-layout (mapv take-node children-markup)]
+  (let
+    [children-markup (keep markup-value->burp children-markup)
+     source-layout (vec (-node-children driver node))
+     key->child-nodes (group-by #(::key (-node-data driver %)) source-layout)
+     child-node-pools (update-vals key->child-nodes (once #(volatile! (seq %))))
 
-    (doseq [[child-node markup] (map vector target-layout children-markup)]
+     take-node
+     (fn take-node [burp-element]
+       (let [burp-key (:key burp-element)
+             node-pool (get child-node-pools burp-key)]
+         (if (or (nil? node-pool) (empty? @node-pool))
+           (-create-node driver burp-key node {})
+           (let [element-node (first @node-pool)]
+             (vswap! node-pool rest)
+             element-node))))
+
+     target-layout (mapv take-node children-markup)]
+
+    (doseq
+      [[child-node markup] (map vector target-layout children-markup)]
       (render-node! driver child-node markup))
 
-    (doseq [child-node-pool (vals child-node-pools)
-            unused-child-node @child-node-pool]
+    (doseq
+      [child-node-pool (vals child-node-pools)
+       unused-child-node @child-node-pool]
       (-remove-node! driver node unused-child-node))
 
-    (let [focused-child (-focused-child driver node)
-          focused-child-target-index (when focused-child (index-of focused-child target-layout))]
+    (let
+      [focused-child (-focused-child driver node)
+       focused-child-target-index (when focused-child (index-of focused-child target-layout))]
       (cond
         (some? focused-child-target-index)
         (do
-          (loop [child-nodes (subvec target-layout 0 focused-child-target-index)
-                 target-index 0]
-            (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
+          (loop
+            [child-nodes (subvec target-layout 0 focused-child-target-index)
+             target-index 0]
+            (when-some
+              [[next-child-node & rest-child-nodes] (seq child-nodes)]
               (-place-node! driver node next-child-node target-index)
               (recur rest-child-nodes (inc target-index))))
           (when (< focused-child-target-index (count target-layout))
-            (loop [child-nodes (subvec target-layout (inc focused-child-target-index))
-                   target-index (inc focused-child-target-index)]
+            (loop
+              [child-nodes (subvec target-layout (inc focused-child-target-index))
+               target-index (inc focused-child-target-index)]
               (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
                 (-place-node! driver node next-child-node target-index)
                 (recur rest-child-nodes (inc target-index))))))
 
         :else
-        (loop [child-nodes target-layout
-               target-index 0]
-          (when-some [[next-child-node & rest-child-nodes] (seq child-nodes)]
+        (loop
+          [child-nodes target-layout
+           target-index 0]
+          (when-some
+            [[next-child-node & rest-child-nodes] (seq child-nodes)]
             (-place-node! driver node next-child-node target-index)
             (recur rest-child-nodes (inc target-index)))))))
   nil)

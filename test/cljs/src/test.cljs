@@ -28,29 +28,32 @@
   (with-doc
     (fn [driver ^js/Document doc]
       (vdom/render! driver (.-body doc)
-        ($ :body#my-body.my-class {:foo "bar"} "Hello, World!"))
+        ($ :div#my-div.my-class {:foo "bar"} "Hello, World!"))
 
-      (expect = (-> doc .-body .-foo) "bar")
-      (expect = (-> doc .-body .-textContent) "Hello, World!")
-      (expect = (-> doc .-body .-id) "my-body")
-      (expect true? (-> doc .-body .-classList (.contains "my-class")))
+      (let [div (-> doc .-body .-firstChild)]
+        (expect = (.-foo div) "bar")
+        (expect = (.-textContent div) "Hello, World!")
+        (expect = (.-id div) "my-div")
+        (expect true? (-> div .-classList (.contains "my-class"))))
 
       (vdom/render! driver (.-body doc)
-        ($ :body#other-id.other-class "Hello, Other!"))
+        ($ :div#other-id.other-class "Hello, Other!"))
 
-      (expect = (-> doc .-body .-foo) nil)
-      (expect = (-> doc .-body .-textContent) "Hello, Other!")
-      (expect = (-> doc .-body .-id) "other-id")
-      (expect = (-> doc .-body .-className) "other-class")
+      (let [div (-> doc .-body .-firstChild)]
+        (expect = (.-foo div) nil)
+        (expect = (.-textContent div) "Hello, Other!")
+        (expect = (.-id div) "other-id")
+        (expect = (.-className div) "other-class"))
 
       (vdom/render! driver (.-body doc)
         ($ :body.class-1.class-2 {:class [:class-3 [:class-4]]}))
 
-      (expect = (-> doc .-body .-textContent) "")
-      (expect true? (-> doc .-body .-classList (.contains "class-1")))
-      (expect true? (-> doc .-body .-classList (.contains "class-2")))
-      (expect true? (-> doc .-body .-classList (.contains "class-3")))
-      (expect true? (-> doc .-body .-classList (.contains "class-4"))))))
+      (let [div (-> doc .-body .-firstChild)]
+        (expect = (-> doc .-body .-textContent) "")
+        (expect true? (-> div .-classList (.contains "class-1")))
+        (expect true? (-> div .-classList (.contains "class-2")))
+        (expect true? (-> div .-classList (.contains "class-3")))
+        (expect true? (-> div .-classList (.contains "class-4")))))))
 
 (check ::listeners
   (with-doc

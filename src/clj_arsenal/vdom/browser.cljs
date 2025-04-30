@@ -104,13 +104,6 @@
               ::vdom/text
               (.createTextNode doc "")
 
-              ::vdom/opaque
-              (let
-                [node (.createElement doc "div")]
-                (set! (.. node -style -display) "contents")
-                node)
-              
-
               :svg
               (.createElementNS doc "http://www.w3.org/2000/svg" "svg")
 
@@ -224,9 +217,17 @@
             (keyword? k)
             (let [aborter (js/AbortController.)]
               (.addEventListener node (name k) f
-                #js{:capture (:capture opts)
-                    :passive (if (boolean? (:passive opts)) (:passive opts) (not (vdom/action? listener)))
-                    :signal (.-signal aborter)})
+                #js{:capture
+                    (:capture opts)
+
+                    :passive
+                    (if (boolean? (:passive opts))
+                      (:passive opts)
+                      (or (not (vdom/action? listener))
+                        (not (get-in listener [:headers :no-prevent-default]))))
+
+                    :signal
+                    (.-signal aborter)})
               #(.abort aborter))
 
             :else
@@ -240,24 +241,12 @@
             (if (nil? current-child-at-index)
               (.appendChild ^js/Node parent-node child-node)
               (.insertBefore ^js/Node parent-node child-node current-child-at-index)))
-          (when
-            (and
-              (=
-               ::vdom/opaque
-               (get-in (.-cljArsenalVDomNodeData ^js/Node child-node) [::vdom/key :operator]))
-              (not (.-isConnected child-node)))
-            (vdom/-attach (.-controller ^js/Node child-node) child-node))
           nil))
 
       (-remove-node!
         [_ parent-node child-node]
         (when (= (get @!parent-node->focused-child parent-node) child-node)
           (try-pass-focus! (some-> child-node .getRootNode .-activeElement) parent-node))
-        (when
-          (=
-           ::vdom/opaque
-           (get-in (.-cljArsenalVDomNodeData ^js/Node child-node) [::vdom/key :operator]))
-          (vdom/-detach (.-controller ^js/Node child-node) child-node))
         (.removeChild ^js/Node parent-node child-node)
         nil)
 

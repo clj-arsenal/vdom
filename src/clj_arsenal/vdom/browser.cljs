@@ -52,14 +52,18 @@
 (defn- action-event-listener-fn
   [^js/Node node action]
   (fn [^js/Event event]
-    (when-some [CustomEvent (some-> node .-ownerDocument .-defaultView .-CustomEvent)]
-      (let [headers (:headers action)
-            action-event (new CustomEvent
-                           "clj-arsenal.action"
-                           #js{:bubbles true
-                               :composed true
-                               :cancelable true
-                               :detail {:action action :source-event event}})]
+    (when-some
+      [CustomEvent (some-> node .-ownerDocument .-defaultView .-CustomEvent)]
+      (let
+        [headers (:headers action)
+
+         action-event
+         (new CustomEvent
+           "clj-arsenal.action"
+           #js{:bubbles true
+               :composed true
+               :cancelable true
+               :detail {:action action :source-event event}})]
 
         (when-not (:no-prevent-default headers)
           (.preventDefault event))
@@ -194,20 +198,22 @@
 
       (-listen!
         [_ node k listener opts]
-        (let [f (cond
-                  (fn? listener)
-                  listener
+        (let
+          [f
+           (cond
+             (fn? listener)
+             listener
 
-                  (ifn? listener)
-                  #(listener %)
+             (ifn? listener)
+             #(listener %)
 
-                  :else
-                  (or
-                    (when (vdom/action? listener)
-                      (action-event-listener-fn node listener))
-                    (throw
-                      (ex-info "invalid listener value, must be a function or an action"
-                        {:listener listener}))))]
+             :else
+             (or
+               (when (vdom/action? listener)
+                 (action-event-listener-fn node listener))
+               (throw
+                 (ex-info "invalid listener value, must be a function or an action"
+                   {:listener listener}))))]
           (cond
             (b/signal? k)
             (let [listen-key (gensym)]

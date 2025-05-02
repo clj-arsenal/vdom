@@ -155,13 +155,15 @@
 
 (defn- render-props!
   [driver node props]
-  (let [data (-node-data driver node)
-        old-props (::props data)
-        unwatch-fns (volatile! (transient (or (::unwatch-fns data) {})))
-        unlisten-fns (volatile! (transient (or (::unlisten-fns data) {})))]
-    (doseq [[k v] props
-            :let [old-v (get old-props k)]
-            :when (not= v old-v)]
+  (let
+    [data (-node-data driver node)
+     old-props (::props data)
+     unwatch-fns (volatile! (transient (or (::unwatch-fns data) {})))
+     unlisten-fns (volatile! (transient (or (::unlisten-fns data) {})))]
+    (doseq
+      [[k v] props
+       :let [old-v (get old-props k)]
+       :when (not= v old-v)]
       (cond
         (instance? BindValue old-v)
         (do
@@ -169,7 +171,7 @@
           (when (-> old-v :opts :dispose)
             (dispose! old-v))
           (vswap! unwatch-fns dissoc! k))
-        
+
         (and (instance? ListenKey k) (some? old-v))
         (do
           ((get @unlisten-fns k))
@@ -177,21 +179,27 @@
 
       (cond
         (instance? BindValue v)
-        (let [watchable (-derive-watchable (:watchable-source v) node)
-              watch-k (gensym)]
+        (let
+          [watchable (-derive-watchable (:watchable-source v) node)
+           watch-k (gensym)]
           (-set-prop! driver node k @watchable)
-          (add-watch watchable watch-k (fn [_ _ _ new-val] (-set-prop! driver node k new-val)))
-          (vswap! unwatch-fns assoc! k #(remove-watch watchable watch-k)))
+          (add-watch watchable watch-k
+            (fn [_ _ _ new-val]
+              (-set-prop! driver node k new-val)))
+          (vswap! unwatch-fns assoc! k
+            #(remove-watch watchable watch-k)))
 
         (and (instance? ListenKey k) (some? v))
-        (let [listener (-derive-listener v node)
-              unlisten-fn (-listen! driver node (:k k) listener (:opts k))]
+        (let
+          [listener (-derive-listener v node)
+           unlisten-fn (-listen! driver node (:k k) listener (:opts k))]
           (vswap! unlisten-fns assoc! k unlisten-fn))
 
         (keyword? k)
         (-set-prop! driver node k v)))
-    (doseq [[old-k old-v] old-props 
-            :when (not (contains? props old-k))]
+    (doseq
+      [[old-k old-v] old-props 
+       :when (not (contains? props old-k))]
       (cond
         (instance? BindValue old-v)
         (do

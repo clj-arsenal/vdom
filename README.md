@@ -1,3 +1,6 @@
+> [!WARNING]
+> Unstable/WIP; avoid using.
+
 Virtual DOM rendering.  Includes driver implementation for the
 browser DOM, but the main vDOM rendering logic is target and
 Clojure-dialect agnostic, just implement a driver for your
@@ -6,19 +9,18 @@ render target.
 ```clojure
 (require '[clj-arsenal.vdom :refer [render! on bind]]')
 (require '[clj-arsenal.vdom.browser :as browser-vdom])
-(require '[clj-arsenal.burp :refer [burp]])
+(require '[clj-arsenal.burp :refer [$]])
 
 (def driver (browser-vdom/driver js/document))
 
 (def !count (atom 0))
 
 (render! driver js/document.body
-  (burp
-    [:button
-      {:style {:display :flex}
-       (on :click) #(swap! !count inc)}
-      "Clicks: "
-      [:input {:value (bind !count)}]]))
+  ($ :button
+    {:style {:display :flex}
+     (on :click) #(swap! !count inc)}
+     "Clicks: "
+     ($ :span {:innerHTML (bind !count)})))
 ```
 
 **Event Listeners:** attach event listeners by adding a `(on :event-key)`

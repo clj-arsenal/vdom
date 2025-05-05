@@ -81,7 +81,7 @@
 
 (defn render!
   [driver target markup]
-  (render-body! driver target (cond-> markup (not (seq? markup)) list)))
+  (render-body! driver target (cond-> markup (not (seq? markup)) list true burp/flatten-body)))
 
 (defn- index-of
   [x coll]

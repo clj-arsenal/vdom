@@ -227,6 +227,7 @@
   [driver node burp-element]
   (-before-update-node driver node)
   (render-props! driver node (:props burp-element))
-  (render-body! driver node (:body burp-element))
+  (when-not (contains? (:props burp-element) :innerHTML)
+    (render-body! driver node (:body burp-element)))
   (-after-update-node driver node)
   nil)
